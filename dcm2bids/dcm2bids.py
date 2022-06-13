@@ -4,7 +4,6 @@
 Reorganising NIfTI files from dcm2niix into the Brain Imaging Data Structure
 """
 
-import argparse
 import logging
 import os
 import platform
@@ -13,6 +12,7 @@ from datetime import datetime
 from glob import glob
 from pathlib import Path
 
+from dcm2bids import common
 from dcm2bids.dcm2niix import Dcm2niix
 from dcm2bids.logger import setup_logging
 from dcm2bids.sidecar import Sidecar, SidecarPairing
@@ -192,88 +192,22 @@ class Dcm2bids(object):
         return intendedForList
 
 
-_SUPPORTED_ARGS = {
-    ('-d', '--dicom_dir'): {
-        'type': Path,
-        'required': True,
-        'nargs': '*',
-        'help': 'DICOM directory(ies).'
-    },
-    ("-p", "--participant"): {
-        'type': str,
-        'required': True,
-        'nargs': '*',
-        'help': 'Participant ID.'
-    },
-    ("-s", "--session"): {
-        'type': str,
-        'required': False,
-        'default': '',
-        'help': "Session ID."
-    },
-    ("-c", "--config"): {
-        'type': Path,
-        'required': True,
-        'help': "JSON configuration file (see example/config.json)."
-    },
-    ("-o", "--output_dir"): {
-        'type': Path,
-        'required': False,
-        'default': Path.cwd(),
-        'help': "Output BIDS directory. (Default: %(default)s)"
-    },
-    ("-fd", "--forceDcm2niix"): {
-        'action': 'store_true',
-        'help': "Overwrite previous temporary dcm2niix "
-                "output if it exists."
-    },
-    ("-cl", "--clobber"): {
-        'action': 'store_true',
-        'help': "Overwrite output if it exists."
-    },
-    ("-l", "--log_level"): {
-        'required': False,
-        'default': DEFAULT.cliLogLevel,
-        'choices': ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        'help': "Set logging level. [%(default)s]"
-    }
-}
-
-
-def _IsSupportedArg(key: str):
-    """Check if given key is supported."""
-    return any([key in flag_tuple for flag_tuple in _SUPPORTED_ARGS])
-
-
-def _build_arg_parser():
-    p = argparse.ArgumentParser(description=__doc__, epilog=DEFAULT.EPILOG,
-                                formatter_class=argparse.RawTextHelpFormatter)
-
-    for flag_tuple, kwargs in _SUPPORTED_ARGS:
-        p.add_argument(*flag_tuple, **kwargs)
-
-    return p
-
-
-def CustomDcm2Bids(**kwargs):
-    parser = _build_arg_parser()
+def BuildDcm2Bids(**kwargs):
+    parser = common._build_arg_parser()
 
     arg_vals = []
     for key, val in kwargs:
-        if not _IsSupportedArg(key):
+        if not common._IsSupportedArg(key):
             raise ValueError(f'Unsupported Key {key}')
         arg_vals.extend([key, val])
     ns = parser.parse_args(arg_vals)
     app = Dcm2bids(**vars(ns))
-    app.run()
+    return app
 
 
 def main():
     """Let's go"""
-    parser = _build_arg_parser()
-    args = parser.parse_args()
-
-    app = Dcm2bids(**vars(args))
+    app = BuildDcm2Bids()
     return app.run()
 
 

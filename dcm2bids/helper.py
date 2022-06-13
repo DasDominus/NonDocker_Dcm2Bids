@@ -2,47 +2,36 @@
 
 """helper module"""
 
-import argparse
-import os
-from pathlib import Path
 import sys
 
+from dcm2bids import common
 from dcm2bids.dcm2niix import Dcm2niix
 from dcm2bids.utils import DEFAULT, assert_dirs_empty
 
 
-def _build_arg_parser():
-    p = argparse.ArgumentParser(description=__doc__, epilog=DEFAULT.EPILOG,
-                                formatter_class=argparse.RawTextHelpFormatter)
+def BuildDcm2niix(**kwargs):
+    parser = common._build_arg_parser(key_filter=['-d', '-o', '-f'])
 
-    p.add_argument("-d", "--dicom_dir",
-                   type=Path,
-                   required=True, nargs="+",
-                   help="DICOM files directory.")
+    arg_vals = []
+    for key, val in kwargs:
+        if not common._IsSupportedArg(key):
+            raise ValueError(f'Unsupported Key {key}')
+        arg_vals.extend([key, val])
 
-    p.add_argument("-o", "--output_dir",
-                   required=False, default=Path.cwd(),
-                   type=Path,
-                   help="Output BIDS directory. "
-                        "(Default: %(default)s)")
+    ns = parser.parse_args(arg_vals)
+    out_folder = ns.output_dir / DEFAULT.tmpDirName / DEFAULT.helperDir
 
-    p.add_argument('--force',
-                   dest='overwrite', action='store_true',
-                   help='Force command to overwrite existing output files.')
+    assert_dirs_empty(parser, ns, out_folder)
+    print(f"Example in: {out_folder}")
 
-    return p
+    app = Dcm2niix(dicomDirs=ns.dicom_dir, bidsDir=ns.output_dir)
+    return app
 
 
 def main():
     """Let's go"""
-    parser = _build_arg_parser()
-    args = parser.parse_args()
-    out_folder = args.output_dir / DEFAULT.tmpDirName / DEFAULT.helperDir
-    assert_dirs_empty(parser, args, out_folder)
-    app = Dcm2niix(dicomDirs=args.dicom_dir, bidsDir=args.output_dir)
-    rsl = app.run()
-    print(f"Example in: {out_folder}")
-    return rsl
+    app = BuildDcm2niix()
+    return app.run()
 
 
 if __name__ == "__main__":
