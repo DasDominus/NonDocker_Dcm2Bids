@@ -7,18 +7,18 @@ Reorganising NIfTI files from dcm2niix into the Brain Imaging Data Structure
 import argparse
 import logging
 import os
-from pathlib import Path
 import platform
 import sys
 from datetime import datetime
 from glob import glob
+from pathlib import Path
 
 from dcm2bids.dcm2niix import Dcm2niix
 from dcm2bids.logger import setup_logging
 from dcm2bids.sidecar import Sidecar, SidecarPairing
 from dcm2bids.structure import Participant
 from dcm2bids.utils import (DEFAULT, load_json, save_json,
-                            splitext_, run_shell_command, valid_path)
+                            run_shell_command, valid_path)
 from dcm2bids.version import __version__, check_latest, dcm2niix_version
 
 
@@ -38,16 +38,16 @@ class Dcm2bids(object):
     """
 
     def __init__(
-        self,
-        dicom_dir,
-        participant,
-        config,
-        output_dir=DEFAULT.outputDir,
-        session=DEFAULT.session,
-        clobber=DEFAULT.clobber,
-        forceDcm2niix=DEFAULT.forceDcm2niix,
-        log_level=DEFAULT.logLevel,
-        **_
+            self,
+            dicom_dir,
+            participant,
+            config,
+            output_dir=DEFAULT.outputDir,
+            session=DEFAULT.session,
+            clobber=DEFAULT.clobber,
+            forceDcm2niix=DEFAULT.forceDcm2niix,
+            log_level=DEFAULT.logLevel,
+            **_
     ):
         self._dicomDirs = []
 
@@ -139,12 +139,12 @@ class Dcm2bids(object):
         for srcFile in glob(acquisition.srcRoot + ".*"):
 
             ext = Path(srcFile).suffixes
-            ext = [curr_ext for curr_ext in ext if curr_ext in ['.nii','.gz',
+            ext = [curr_ext for curr_ext in ext if curr_ext in ['.nii', '.gz',
                                                                 '.json']]
 
             dstFile = (self.bidsDir / acquisition.dstRoot).with_suffix("".join(ext))
 
-            dstFile.parent.mkdir(parents = True, exist_ok = True)
+            dstFile.parent.mkdir(parents=True, exist_ok=True)
 
             # checking if destination file exists
             if dstFile.exists():
@@ -159,10 +159,10 @@ class Dcm2bids(object):
 
             # it's an anat nifti file and the user using a deface script
             if (
-                self.config.get("defaceTpl")
-                and acquisition.dataType == "func"
-                and ".nii" in ext
-                ):
+                    self.config.get("defaceTpl")
+                    and acquisition.dataType == "func"
+                    and ".nii" in ext
+            ):
                 try:
                     os.remove(dstFile)
                 except FileNotFoundError:
@@ -192,50 +192,80 @@ class Dcm2bids(object):
         return intendedForList
 
 
+_SUPPORTED_ARGS = {
+    ('-d', '--dicom_dir'): {
+        'type': Path,
+        'required': True,
+        'nargs': '*',
+        'help': 'DICOM directory(ies).'
+    },
+    ("-p", "--participant"): {
+        'type': str,
+        'required': True,
+        'nargs': '*',
+        'help': 'Participant ID.'
+    },
+    ("-s", "--session"): {
+        'type': str,
+        'required': False,
+        'default': '',
+        'help': "Session ID."
+    },
+    ("-c", "--config"): {
+        'type': Path,
+        'required': True,
+        'help': "JSON configuration file (see example/config.json)."
+    },
+    ("-o", "--output_dir"): {
+        'type': Path,
+        'required': False,
+        'default': Path.cwd(),
+        'help': "Output BIDS directory. (Default: %(default)s)"
+    },
+    ("-fd", "--forceDcm2niix"): {
+        'action': 'store_true',
+        'help': "Overwrite previous temporary dcm2niix "
+                "output if it exists."
+    },
+    ("-cl", "--clobber"): {
+        'action': 'store_true',
+        'help': "Overwrite output if it exists."
+    },
+    ("-l", "--log_level"): {
+        'required': False,
+        'default': DEFAULT.cliLogLevel,
+        'choices': ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        'help': "Set logging level. [%(default)s]"
+    }
+}
+
+
+def _IsSupportedArg(key: str):
+    """Check if given key is supported."""
+    return any([key in flag_tuple for flag_tuple in _SUPPORTED_ARGS])
+
+
 def _build_arg_parser():
     p = argparse.ArgumentParser(description=__doc__, epilog=DEFAULT.EPILOG,
                                 formatter_class=argparse.RawTextHelpFormatter)
 
-    p.add_argument("-d", "--dicom_dir",
-                   type=Path, required=True, nargs="+",
-                   help="DICOM directory(ies).")
-
-    p.add_argument("-p", "--participant",
-                   required=True,
-                   help="Participant ID.")
-
-    p.add_argument("-s", "--session",
-                   required=False,
-                   default="",
-                   help="Session ID.")
-
-    p.add_argument("-c", "--config",
-                   type=Path,
-                   required=True,
-                   help="JSON configuration file (see example/config.json).")
-
-    p.add_argument("-o", "--output_dir",
-                   required=False,
-                   type=Path,
-                   default=Path.cwd(),
-                   help="Output BIDS directory. (Default: %(default)s)")
-
-    p.add_argument("--forceDcm2niix",
-                   action="store_true",
-                   help="Overwrite previous temporary dcm2niix "
-                        "output if it exists.")
-
-    p.add_argument("--clobber",
-                   action="store_true",
-                   help="Overwrite output if it exists.")
-
-    p.add_argument("-l", "--log_level",
-                   required=False,
-                   default=DEFAULT.cliLogLevel,
-                   choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                   help="Set logging level. [%(default)s]")
+    for flag_tuple, kwargs in _SUPPORTED_ARGS:
+        p.add_argument(*flag_tuple, **kwargs)
 
     return p
+
+
+def CustomDcm2Bids(**kwargs):
+    parser = _build_arg_parser()
+
+    arg_vals = []
+    for key, val in kwargs:
+        if not _IsSupportedArg(key):
+            raise ValueError(f'Unsupported Key {key}')
+        arg_vals.extend([key, val])
+    ns = parser.parse_args(arg_vals)
+    app = Dcm2bids(**vars(ns))
+    app.run()
 
 
 def main():
