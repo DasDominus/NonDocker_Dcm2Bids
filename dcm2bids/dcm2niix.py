@@ -25,7 +25,7 @@ class Dcm2niix(object):
     """
 
     def __init__(
-        self, dicomDirs, bidsDir, participant=None, options=DEFAULT.dcm2niixOptions
+        self, dicomDirs: Path, bidsDir: Path, participant=None, options=DEFAULT.dcm2niixOptions
     ):
         self.logger = logging.getLogger(__name__)
 
@@ -95,8 +95,11 @@ class Dcm2niix(object):
         """ Execute dcm2niix for each directory in dicomDirs
         """
         for dicomDir in self.dicomDirs:
+            # Cast WindowPath to str
+            if isinstance(dicomDir, Path):
+                dicomDir = str(dicomDir)
             cmd = ['dcm2niix', *shlex.split(self.options),
-                   '-o', self.outputDir, dicomDir]
+                   '-o', str(self.outputDir), dicomDir]
             output = run_shell_command(cmd)
 
             try:

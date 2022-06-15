@@ -196,10 +196,12 @@ def BuildDcm2Bids(**kwargs):
     parser = common._build_arg_parser()
 
     arg_vals = []
-    for key, val in kwargs:
-        if not common._IsSupportedArg(key):
-            raise ValueError(f'Unsupported Key {key}')
-        arg_vals.extend([key, val])
+    for key, val in kwargs.items():
+        flg = common.GetSupportedArg(key)
+        if not flg:
+            raise ValueError(f'Unsupported Flag {key} given')
+        arg_vals.extend([flg, val])
+
     ns = parser.parse_args(arg_vals)
     app = Dcm2bids(**vars(ns))
     return app

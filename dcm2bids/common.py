@@ -8,13 +8,12 @@ _SUPPORTED_ARGS = {
     ('-d', '--dicom_dir'): {
         'type': Path,
         'required': True,
-        'nargs': '*',
+        'nargs': '+',
         'help': 'DICOM directory(ies).'
     },
     ("-p", "--participant"): {
         'type': str,
         'required': True,
-        'nargs': '*',
         'help': 'Participant ID.'
     },
     ("-s", "--session"): {
@@ -57,18 +56,24 @@ _SUPPORTED_ARGS = {
 }
 
 
-def _IsSupportedArg(key: str):
+def GetSupportedArg(key: str):
     """Check if given key is supported."""
-    return any([key in flag_tuple for flag_tuple in _SUPPORTED_ARGS])
+    for flag_tuple in _SUPPORTED_ARGS:
+        if f'-{key}' in flag_tuple:
+            return f'-{key}'
+        if f'--{key}' in flag_tuple:
+            return f'--{key}'
+    return ''
 
 
 def _build_arg_parser(key_filter: Optional[List[str]] = None):
     p = argparse.ArgumentParser(description=__doc__, epilog=DEFAULT.EPILOG,
                                 formatter_class=argparse.RawTextHelpFormatter)
 
-    for flag_tuple, kwargs in _SUPPORTED_ARGS:
+    for flag_tuple, kwargs in _SUPPORTED_ARGS.items():
+
         if (key_filter is not None and
-                (flag_tuple[0] not in key_filter or flag_tuple[1] not in key_filter)):
+                (flag_tuple[0] not in key_filter and flag_tuple[1] not in key_filter)):
             continue
         p.add_argument(*flag_tuple, **kwargs)
 
